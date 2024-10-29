@@ -13,6 +13,8 @@ var usersRouter = require('./routes/users');
 var app = express();
 
 //app.use(...);
+require('./routes/auth.routes')(app);
+require('./routes/user.routes')(app);
 
 const db = require("./models");
 const Role = db.role;
