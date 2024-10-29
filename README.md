@@ -521,3 +521,86 @@ exports.moderatorBoard = (req, res) => {
   res.status(200).send("Moderator Content.");
 };
 ```
+
+### Define Routes
+When a client sends request for an endpoint using HTTP request (GET, POST, PUT, DELETE), we need to determine how the server will response by setting up the routes.
+
+We can separate our routes into 2 part: for Authentication and for Authorization (accessing protected resources).
+
+Authentication:
+
+POST /api/auth/signup
+POST /api/auth/signin
+routes/auth.routes.js
+
+```js
+const { verifySignUp } = require("../middleware");
+const controller = require("../controllers/auth.controller");
+
+module.exports = function(app) {
+  app.use(function(req, res, next) {
+    res.header(
+      "Access-Control-Allow-Headers",
+      "x-access-token, Origin, Content-Type, Accept"
+    );
+    next();
+  });
+
+  app.post(
+    "/api/auth/signup",
+    [
+      verifySignUp.checkDuplicateUsernameOrEmail,
+      verifySignUp.checkRolesExisted
+    ],
+    controller.signup
+  );
+
+  app.post("/api/auth/signin", controller.signin);
+};
+
+```
+
+Authorization:
+
+GET /api/test/all
+GET /api/test/user for loggedin users (user/moderator/admin)
+GET /api/test/mod for moderator
+GET /api/test/admin for admin
+
+routes/user.routes.js
+
+```js
+const { authJwt } = require("../middleware");
+const controller = require("../controllers/user.controller");
+
+module.exports = function(app) {
+  app.use(function(req, res, next) {
+    res.header(
+      "Access-Control-Allow-Headers",
+      "x-access-token, Origin, Content-Type, Accept"
+    );
+    next();
+  });
+
+  app.get("/api/test/all", controller.allAccess);
+
+  app.get(
+    "/api/test/user",
+    [authJwt.verifyToken],
+    controller.userBoard
+  );
+
+  app.get(
+    "/api/test/mod",
+    [authJwt.verifyToken, authJwt.isModerator],
+    controller.moderatorBoard
+  );
+
+  app.get(
+    "/api/test/admin",
+    [authJwt.verifyToken, authJwt.isAdmin],
+    controller.adminBoard
+  );
+};
+
+```
