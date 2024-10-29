@@ -16,7 +16,7 @@ Install Dependencies
 In api folder run the next command to install necessary packages
 
 ```bash
-npm install express sequelize pg pg-hstore cors jsonwebtoken bcryptjs --save
+npm install express sequelize pg pg-hstore cors jsonwebtoken bcryptjs dotenv --save
 ```
 And add this code:
 
