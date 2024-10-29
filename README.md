@@ -207,3 +207,184 @@ function initial() {
   });
 }
 ```
+### Create Middleware functions
+
+To verify a Signup action, we need 2 functions:
+– check if username or email is duplicate or not
+– check if roles in the request is existed or not
+
+middleware/verifySignUp.js
+
+```js
+const db = require("../models");
+const ROLES = db.ROLES;
+const User = db.user;
+
+checkDuplicateUsernameOrEmail = (req, res, next) => {
+  // Username
+  User.findOne({
+    where: {
+      username: req.body.username
+    }
+  }).then(user => {
+    if (user) {
+      res.status(400).send({
+        message: "Failed! Username is already in use!"
+      });
+      return;
+    }
+
+    // Email
+    User.findOne({
+      where: {
+        email: req.body.email
+      }
+    }).then(user => {
+      if (user) {
+        res.status(400).send({
+          message: "Failed! Email is already in use!"
+        });
+        return;
+      }
+
+      next();
+    });
+  });
+};
+
+checkRolesExisted = (req, res, next) => {
+  if (req.body.roles) {
+    for (let i = 0; i < req.body.roles.length; i++) {
+      if (!ROLES.includes(req.body.roles[i])) {
+        res.status(400).send({
+          message: "Failed! Role does not exist = " + req.body.roles[i]
+        });
+        return;
+      }
+    }
+  }
+  
+  next();
+};
+
+const verifySignUp = {
+  checkDuplicateUsernameOrEmail: checkDuplicateUsernameOrEmail,
+  checkRolesExisted: checkRolesExisted
+};
+
+module.exports = verifySignUp;
+```
+
+
+To process  Authentication &  Authorization, we have these functions:
+- check if token is provided, legal or not. We get token from x-access-token of HTTP headers, then use jsonwebtoken's verify() function.
+- check if roles of the user contains required role or not.
+
+middleware/authJwt.js
+
+```js
+const jwt = require("jsonwebtoken");
+const config = require("../config/auth.config.js");
+const db = require("../models");
+const User = db.user;
+
+verifyToken = (req, res, next) => {
+  let token = req.headers["x-access-token"];
+
+  if (!token) {
+    return res.status(403).send({
+      message: "No token provided!"
+    });
+  }
+
+  jwt.verify(token,
+            config.secret,
+            (err, decoded) => {
+              if (err) {
+                return res.status(401).send({
+                  message: "Unauthorized!",
+                });
+              }
+              req.userId = decoded.id;
+              next();
+            });
+};
+
+isAdmin = (req, res, next) => {
+  User.findByPk(req.userId).then(user => {
+    user.getRoles().then(roles => {
+      for (let i = 0; i < roles.length; i++) {
+        if (roles[i].name === "admin") {
+          next();
+          return;
+        }
+      }
+
+      res.status(403).send({
+        message: "Require Admin Role!"
+      });
+      return;
+    });
+  });
+};
+
+isModerator = (req, res, next) => {
+  User.findByPk(req.userId).then(user => {
+    user.getRoles().then(roles => {
+      for (let i = 0; i < roles.length; i++) {
+        if (roles[i].name === "moderator") {
+          next();
+          return;
+        }
+      }
+
+      res.status(403).send({
+        message: "Require Moderator Role!"
+      });
+    });
+  });
+};
+
+isModeratorOrAdmin = (req, res, next) => {
+  User.findByPk(req.userId).then(user => {
+    user.getRoles().then(roles => {
+      for (let i = 0; i < roles.length; i++) {
+        if (roles[i].name === "moderator") {
+          next();
+          return;
+        }
+
+        if (roles[i].name === "admin") {
+          next();
+          return;
+        }
+      }
+
+      res.status(403).send({
+        message: "Require Moderator or Admin Role!"
+      });
+    });
+  });
+};
+
+const authJwt = {
+  verifyToken: verifyToken,
+  isAdmin: isAdmin,
+  isModerator: isModerator,
+  isModeratorOrAdmin: isModeratorOrAdmin
+};
+module.exports = authJwt;
+
+```
+
+middleware/index.js
+
+```js
+const authJwt = require("./authJwt");
+const verifySignUp = require("./verifySignUp");
+
+module.exports = {
+  authJwt,
+  verifySignUp
+};
+```
