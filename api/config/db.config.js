@@ -10,5 +10,6 @@ module.exports = {
       min: parseInt(process.env.DB_POOL_MIN),
       acquire: parseInt(process.env.DB_POOL_ACQUIRE),
       idle: parseInt(process.env.DB_POOL_IDLE)
-    }
+    },
+    secret: process.env.AUTH_SECRET
   };
