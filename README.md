@@ -604,3 +604,14 @@ module.exports = function(app) {
 };
 
 ```
+
+Don't forget to add these routes in server.js:
+```js
+...
+// routes
+require('./app/routes/auth.routes')(app);
+require('./app/routes/user.routes')(app);
+
+// set port, listen for requests
+...
+```
