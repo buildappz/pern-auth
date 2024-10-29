@@ -43,7 +43,8 @@ module.exports = {
       min: parseInt(process.env.DB_POOL_MIN),
       acquire: parseInt(process.env.DB_POOL_ACQUIRE),
       idle: parseInt(process.env.DB_POOL_IDLE)
-    }
+    },
+    secret: process.env.AUTH_SECRET
   };
 ```
 
@@ -60,6 +61,7 @@ DB_POOL_MAX=5
 DB_POOL_MIN=0
 DB_POOL_ACQUIRE=30000
 DB_POOL_IDLE=10000
+AUTH_SECRET=pern-auth-secret-key
 ```
 
 #### Define the Sequelize Model
@@ -170,4 +172,38 @@ In development, you may need to drop existing tables and re-sync database. Just 
 db.sequelize.sync({ force: true }).then(() => {
   console.log("Drop and re-sync db.");
 });
+```
+
+Don’t forget to call sync() method in server.js.
+
+```js
+...
+const app = express();
+app.use(...);
+
+const db = require("./app/models");
+const Role = db.role;
+
+db.sequelize.sync({force: true}).then(() => {
+  console.log('Drop and Resync Db');
+  initial();
+});
+
+...
+function initial() {
+  Role.create({
+    id: 1,
+    name: "user"
+  });
+ 
+  Role.create({
+    id: 2,
+    name: "moderator"
+  });
+ 
+  Role.create({
+    id: 3,
+    name: "admin"
+  });
+}
 ```
