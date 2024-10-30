@@ -531,33 +531,24 @@ Authentication:
 
 POST /api/auth/signup
 POST /api/auth/signin
+
 routes/auth.routes.js
 
 ```js
+var express = require('express');
 const { verifySignUp } = require("../middleware");
 const controller = require("../controllers/auth.controller");
+var router = express.Router();
 
-module.exports = function(app) {
-  app.use(function(req, res, next) {
-    res.header(
-      "Access-Control-Allow-Headers",
-      "x-access-token, Origin, Content-Type, Accept"
-    );
-    next();
-  });
+// Create a new User
+router.post("/signup", 
+    verifySignUp.checkDuplicateUsernameOrEmail, //Middleware
+    verifySignUp.checkRolesExisted, //Middleware
+    controller.signup);
 
-  app.post(
-    "/api/auth/signup",
-    [
-      verifySignUp.checkDuplicateUsernameOrEmail,
-      verifySignUp.checkRolesExisted
-    ],
-    controller.signup
-  );
+router.post("/signin", controller.signin);
 
-  app.post("/api/auth/signin", controller.signin);
-};
-
+module.exports = router;
 ```
 
 Authorization:
@@ -605,13 +596,93 @@ module.exports = function(app) {
 
 ```
 
-Don't forget to add these routes in server.js:
+Don't forget to add these routes in app.js should look like this:
 ```js
 ...
-// routes
-require('./app/routes/auth.routes')(app);
-require('./app/routes/user.routes')(app);
 
-// set port, listen for requests
+require('dotenv').config();
+var createError = require('http-errors');
+var express = require('express');
+var path = require('path');
+var cookieParser = require('cookie-parser');
+var logger = require('morgan');
+const cors = require("cors");
+
+var indexRouter = require('./routes/index');
+var usersRouter = require('./routes/user.routes');
+var authRouter = require('./routes/auth.routes');
+
+var app = express();
+
+//app.use(...);
+//require('./routes/auth.routes')(app);
+//require('./routes/user.routes')(app);
+
+const db = require("./models");
+const Role = db.role;
+
+db.sequelize.sync({force: true}).then(() => { //For production, just insert these rows manually and use sync() without parameters to avoid dropping data:
+  console.log('Drop and Resync Db');
+  initial();
+});
+
+
+
+var corsOptions = {
+  origin: "http://localhost:8081"
+};
+
+app.use(cors(corsOptions));
+
+// view engine setup
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'jade');
+
+app.use(logger('dev'));
+// parse requests of content-type - application/json
+app.use(express.json());
+// parse requests of content-type - application/x-www-form-urlencoded
+app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.use('/', indexRouter);
+app.use('/users', usersRouter);
+app.use('/api/auth', authRouter);
+
+// catch 404 and forward to error handler
+app.use(function(req, res, next) {
+  next(createError(404));
+});
+
+// error handler
+app.use(function(err, req, res, next) {
+  // set locals, only providing error in development
+  res.locals.message = err.message;
+  res.locals.error = req.app.get('env') === 'development' ? err : {};
+
+  // render the error page
+  res.status(err.status || 500);
+  res.render('error');
+});
+
+module.exports = app;
+
+function initial() {
+  Role.create({
+    id: 1,
+    name: "user"
+  });
+ 
+  Role.create({
+    id: 2,
+    name: "moderator"
+  });
+ 
+  Role.create({
+    id: 3,
+    name: "admin"
+  });
+}
 ...
 ```
