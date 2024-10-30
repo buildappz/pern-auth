@@ -561,42 +561,31 @@ GET /api/test/admin for admin
 routes/user.routes.js
 
 ```js
+var express = require('express');
+var router = express.Router();
 const { authJwt } = require("../middleware");
 const controller = require("../controllers/user.controller");
 
-module.exports = function(app) {
-  app.use(function(req, res, next) {
-    res.header(
-      "Access-Control-Allow-Headers",
-      "x-access-token, Origin, Content-Type, Accept"
-    );
-    next();
-  });
+router.get("/all", controller.allAccess);
 
-  app.get("/api/test/all", controller.allAccess);
+router.get("/user", 
+  authJwt.verifyToken,
+  controller.userBoard);
 
-  app.get(
-    "/api/test/user",
-    [authJwt.verifyToken],
-    controller.userBoard
-  );
+  router.get("/mod", 
+    authJwt.verifyToken,
+    authJwt.isModerator,
+    controller.moderatorBoard);
 
-  app.get(
-    "/api/test/mod",
-    [authJwt.verifyToken, authJwt.isModerator],
-    controller.moderatorBoard
-  );
+  router.get("/admin", 
+    authJwt.verifyToken,
+    authJwt.isAdmin,
+    controller.adminBoard);
 
-  app.get(
-    "/api/test/admin",
-    [authJwt.verifyToken, authJwt.isAdmin],
-    controller.adminBoard
-  );
-};
-
+module.exports = router;
 ```
 
-Don't forget to add these routes in app.js should look like this:
+Don't forget app.js should look like this:
 ```js
 ...
 
@@ -614,9 +603,6 @@ var authRouter = require('./routes/auth.routes');
 
 var app = express();
 
-//app.use(...);
-//require('./routes/auth.routes')(app);
-//require('./routes/user.routes')(app);
 
 const db = require("./models");
 const Role = db.role;
@@ -686,3 +672,53 @@ function initial() {
 }
 ...
 ```
+
+Register some users with /signup API:
+
+![Register new user](docs/images/3_node-js-jwt-authentication-postgresql-example-registration-new-user.png)
+
+Our tables after registration could look like this.
+
+```sql
+testdb=# select * from users;
+ id | username |       email        |                           password                           |         createdAt          |         updatedAt
+----+----------+--------------------+--------------------------------------------------------------+----------------------------+----------------------------
+  1 | admin    | admin@bezkoder.com | $2a$08$T0B0i/96KE90jAYPOhpsN.vJGVPMfFw.FbxljzuQkkN4ZK3YauRLq | 2020-11-19 21:20:49.305+07 | 2020-11-19 21:20:49.305+07
+  2 | mod      | mod@bezkoder.com   | $2a$08$CmCiT5Y/9OTUM0ofSP2r2eQSHVIcqhjp1wH.GYA5oPcRlJ7Hr2C66 | 2020-11-19 21:21:13.67+07  | 2020-11-19 21:21:13.67+07
+  3 | user     | user@bezkoder.com  | $2a$08$f.exOM3efA4DF4BtohzhAOzcv2.iCppJIbdSHFLRmka569sCNXfSe | 2020-11-19 21:23:00.978+07 | 2020-11-19 21:23:00.978+07
+(3 rows)
+
+
+testdb=# select * from user_roles;
+         createdAt          |         updatedAt          | roleId | userId
+----------------------------+----------------------------+--------+--------
+ 2020-11-19 21:20:50.045+07 | 2020-11-19 21:20:50.045+07 |      3 |      1
+ 2020-11-19 21:21:14.604+07 | 2020-11-19 21:21:14.604+07 |      1 |      2
+ 2020-11-19 21:21:14.604+07 | 2020-11-19 21:21:14.604+07 |      2 |      2
+ 2020-11-19 21:23:02.1+07   | 2020-11-19 21:23:02.1+07   |      1 |      3
+(4 rows)
+```
+
+Access public resource: GET /api/test/all
+
+![Access public resource](docs/images/4_node-js-jwt-authentication-postgresql-example-access-public-resources.png)
+
+Access protected resource: GET /api/test/user
+
+![Access protected resource](docs/images/5_node-js-jwt-authentication-postgresql-example-authorization-access-protected-resources.png)
+
+Login an account (with wrong password): POST /api/auth/signin
+
+![Incorrect Sign In](docs/images/6_node-js-jwt-authentication-postgresql-example-login-user-failed.png)
+
+Login a correct account: POST /api/auth/signin
+
+![Sign In](docs/images/7_node-js-jwt-authentication-postgresql-example-login-user-successful.png)
+
+**Access protected resources:**
+
+GET /api/test/user
+GET /api/test/mod
+GET /api/test/admin
+
+![Sign In](docs/images/8_node-js-jwt-authentication-postgresql-example-authorization-demo.png)
