@@ -8,13 +8,14 @@ var logger = require('morgan');
 const cors = require("cors");
 
 var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
+var usersRouter = require('./routes/user.routes');
+var authRouter = require('./routes/auth.routes');
 
 var app = express();
 
 //app.use(...);
-require('./routes/auth.routes')(app);
-require('./routes/user.routes')(app);
+//require('./routes/auth.routes')(app);
+//require('./routes/user.routes')(app);
 
 const db = require("./models");
 const Role = db.role;
@@ -24,22 +25,7 @@ db.sequelize.sync({force: true}).then(() => { //For production, just insert thes
   initial();
 });
 
-function initial() {
-  Role.create({
-    id: 1,
-    name: "user"
-  });
- 
-  Role.create({
-    id: 2,
-    name: "moderator"
-  });
- 
-  Role.create({
-    id: 3,
-    name: "admin"
-  });
-}
+
 
 var corsOptions = {
   origin: "http://localhost:8081"
@@ -52,13 +38,16 @@ app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
 
 app.use(logger('dev'));
+// parse requests of content-type - application/json
 app.use(express.json());
+// parse requests of content-type - application/x-www-form-urlencoded
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
+app.use('/api/auth', authRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
@@ -77,3 +66,20 @@ app.use(function(err, req, res, next) {
 });
 
 module.exports = app;
+
+function initial() {
+  Role.create({
+    id: 1,
+    name: "user"
+  });
+ 
+  Role.create({
+    id: 2,
+    name: "moderator"
+  });
+ 
+  Role.create({
+    id: 3,
+    name: "admin"
+  });
+}
